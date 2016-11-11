@@ -3,5 +3,7 @@
 *.elf
 *.DS_Store
 *.d
+CMSIS
+STM32F4xx_HAL_Driver
 
 README.md
