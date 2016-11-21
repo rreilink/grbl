@@ -32,7 +32,7 @@ ServoAxis axis[2];
 /*
  * Encoders
  */
-static void encoders_init(void) {
+void encoders_init(void) {
     GPIO_InitTypeDef GPIO_Init;
     TIM_Encoder_InitTypeDef Encoder_Init;
 
@@ -123,7 +123,7 @@ void motors_init(void) {
     GPIO_InitTypeDef GPIO_Init;
 
     // Motor enable pin
-    GPIO_Init.Pin = GPIO_PIN_15;
+    GPIO_Init.Pin = GPIO_PIN_8;
     GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_Init.Speed = GPIO_SPEED_LOW;
     GPIO_Init.Pull = GPIO_NOPULL;
@@ -131,13 +131,20 @@ void motors_init(void) {
 
 
 
-    // Motor PWM pins
-    GPIO_Init.Pin = GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13;
+    // Motor PWM pins: PA8, PA9, PA10, PB13, PB14, PB15
     GPIO_Init.Mode = GPIO_MODE_AF_PP;
     GPIO_Init.Speed = GPIO_SPEED_HIGH;
     GPIO_Init.Pull = GPIO_NOPULL;
-    GPIO_Init.Alternate = GPIO_AF1_TIM2;
-    HAL_GPIO_Init(GPIOE, &GPIO_Init);
+    GPIO_Init.Alternate = GPIO_AF1_TIM1;
+
+    GPIO_Init.Pin = GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10;
+    HAL_GPIO_Init(GPIOA, &GPIO_Init);
+
+    GPIO_Init.Pin = GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
+    HAL_GPIO_Init(GPIOB, &GPIO_Init);
+
+
+
 
     __TIM1_CLK_ENABLE();
     motorPWM.Instance = TIM1;
@@ -165,9 +172,8 @@ void motors_init(void) {
 
     HAL_NVIC_SetPriority(TIM1_UP_TIM10_IRQn, 1, 0);
 
-    /* Enable Timer1 Interrupt */
+    // Enable Timer1 Interrupt
     HAL_NVIC_EnableIRQ(TIM1_UP_TIM10_IRQn);
-
 
     HAL_TIM_PWM_Start(&motorPWM, TIM_CHANNEL_1);
     HAL_TIM_PWM_Start(&motorPWM, TIM_CHANNEL_2);
@@ -176,7 +182,7 @@ void motors_init(void) {
     HAL_TIM_Base_Start_IT(&motorPWM);
 
     // Enable motors
-    GPIOC->BSRRL = GPIO_PIN_15; // set pin
+    GPIOC->BSRRL = GPIO_PIN_8; // set pin
 
 }
 
@@ -267,6 +273,18 @@ void TIM1_UP_TIM10_IRQHandler(void)
     HAL_TIM_IRQHandler(&motorPWM);
 
 }
+
+
+int readPosX() {
+    encoder_read(&axis[0]);
+    return axis[0].position;
+}
+
+int readPosY() {
+    encoder_read(&axis[1]);
+    return axis[1].position;
+}
+
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
