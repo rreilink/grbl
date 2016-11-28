@@ -36,9 +36,6 @@ void SysTick_Handler(void) {
     HAL_SYSTICK_IRQHandler();
 }
 
-//uint32_t SystemCoreClock = 16000000;
-
-
 
 void io_init() {
     GPIO_InitTypeDef GPIO_Init = { 0 };
@@ -58,12 +55,12 @@ void io_init() {
     GPIO_Init.Pull = GPIO_PULLUP;
     HAL_GPIO_Init(GPIOC, &GPIO_Init);
 
-    // LED pin
-    GPIO_Init.Pin = GPIO_PIN_12;
+    // Timing debug pin
+    GPIO_Init.Pin = GPIO_PIN_10;
     GPIO_Init.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_Init.Speed = GPIO_SPEED_LOW;
+    GPIO_Init.Speed = GPIO_SPEED_HIGH;
     GPIO_Init.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOD, &GPIO_Init);
+    HAL_GPIO_Init(GPIOC, &GPIO_Init);
 
     //User pin
     GPIO_Init.Pin = GPIO_PIN_0;
@@ -161,9 +158,11 @@ int main(void)
       HAL_Delay(50);
     }
 #endif
-    /*encoders_init();
-    motors_init();
-    motors_setPWM(-800,-1600,0);
+
+#if 0    
+    encoders_init();
+    //motors_init();
+    //motors_setPWM(-400,-400,0);
 
     serial_init();
     for(;;) {
@@ -171,23 +170,12 @@ int main(void)
         serial_write('\n');
         print_uint32_base10(readPosX());
         serial_write(',');
-        print_uint32_base10(readPosY());
-
-    }*/
-
-    //protocol_main_loop();
-
-    serial_init();
-    
- /*   
-    for(;;) {
-        HAL_Delay(50);
-        serial_write('R');
-
+        print_uint32_base10(readPosZ());
 
     }
-   */ 
+#endif
 
+    serial_init();
     servo_init();
 
 

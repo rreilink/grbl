@@ -4,7 +4,7 @@
 
 #include "pathplanner.h"
 
-TIM_HandleTypeDef motorPWM;
+TIM_HandleTypeDef motorPWM = {0};
 
 typedef struct  {
     float Kp;
@@ -27,17 +27,19 @@ typedef struct {
 } ServoAxis;
 
 
-ServoAxis axis[2];
+ServoAxis axis[3] = {0};
 
 /*
  * Encoders
  */
 void encoders_init(void) {
-    GPIO_InitTypeDef GPIO_Init;
-    TIM_Encoder_InitTypeDef Encoder_Init;
+    GPIO_InitTypeDef GPIO_Init = {0};
+    TIM_Encoder_InitTypeDef Encoder_Init = {0};
 
     __TIM3_CLK_ENABLE();
     __TIM4_CLK_ENABLE();
+    __TIM5_CLK_ENABLE();
+    
     /* Encoder interface */
 
     /* common settings */
@@ -93,6 +95,27 @@ void encoders_init(void) {
 
     HAL_TIM_Encoder_Start(&axis[1].encoder,TIM_CHANNEL_1|TIM_CHANNEL_2); // All channels
 
+    /* Encoder interface */
+    /* encoder z on PA0 / PA1, TIM5 */
+    GPIO_Init.Pin = GPIO_PIN_0 | GPIO_PIN_1;
+    GPIO_Init.Mode = GPIO_MODE_AF_OD;
+    GPIO_Init.Speed = GPIO_SPEED_HIGH;
+    GPIO_Init.Pull = GPIO_PULLDOWN;
+    GPIO_Init.Alternate = GPIO_AF2_TIM5;
+    HAL_GPIO_Init(GPIOA, &GPIO_Init);
+
+    axis[2].encoder.Instance = TIM5;
+    axis[2].encoder.Init.Period = 65535;
+    axis[2].encoder.Init.Prescaler = 0;
+    axis[2].encoder.Init.ClockDivision = 0;
+    axis[2].encoder.Init.CounterMode = TIM_COUNTERMODE_UP;
+
+    HAL_TIM_Base_Init(&axis[2].encoder);
+
+    HAL_TIM_Encoder_Init(&axis[2].encoder, &Encoder_Init);
+
+    HAL_TIM_Encoder_Start(&axis[2].encoder,TIM_CHANNEL_1|TIM_CHANNEL_2); // All channels
+    
 
 }
 
@@ -120,7 +143,7 @@ void encoder_home(uint8_t i) {
  */
 
 void motors_init(void) {
-    GPIO_InitTypeDef GPIO_Init;
+    GPIO_InitTypeDef GPIO_Init = {0};
 
     // Motor enable pin
     GPIO_Init.Pin = GPIO_PIN_8;
@@ -149,7 +172,7 @@ void motors_init(void) {
     __TIM1_CLK_ENABLE();
     motorPWM.Instance = TIM1;
     motorPWM.Init.Period = 4200; //20kHz from 84MHz clock
-    motorPWM.Init.Prescaler = 1;
+    motorPWM.Init.Prescaler = 0;
     motorPWM.Init.ClockDivision = 0;
     motorPWM.Init.CounterMode = TIM_COUNTERMODE_UP;
     HAL_TIM_PWM_Init(&motorPWM);
@@ -216,7 +239,7 @@ void motors_setPWM(int p1, int p2, int p3) {
 
     motorPWM.Instance->CCR1 = min(p1, 4199);
     motorPWM.Instance->CCR2 = min(p2, 4199);
-    motorPWM.Instance->CCR3 = min(p3, 4199);
+    motorPWM.Instance->CCR3 = min(p3, 2099); // 12 V motor for Z
     motorPWM.Instance->CCER = CCER;
 
 }
@@ -239,6 +262,11 @@ void servo_init() {
     axis[1].PID.Td = 0.01;
     axis[1].PID.limit = 4199;
 
+    axis[2].PID.Kp = 50;
+    axis[2].PID.Ti = 0.1;
+    axis[2].PID.Td = 0.005;
+    axis[2].PID.limit = 2099;
+    
     motors_init();
     encoders_init();
 }
@@ -286,18 +314,21 @@ int readPosY() {
 }
 
 
+int readPosZ() {
+    encoder_read(&axis[2]);
+    return axis[2].position;
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET);
-
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
 
     pathplanner_execute();
 
-    int setpointX, setpointY;
-
     encoder_read(&axis[0]);
     encoder_read(&axis[1]);
-
+    encoder_read(&axis[2]);
+    
     //do here: if probing active and probe active, copy axisn.position to probe position
     // see grbl probe_state_monitor
 
@@ -307,23 +338,22 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         sys_probe_state = PROBE_OFF;
         sys.probe_position[0] = axis[0].position;
         sys.probe_position[1] = axis[1].position;
-        sys.probe_position[2] = sys.position[2];
+        sys.probe_position[2] = axis[2].position;
 
         bit_true(sys_rt_exec_state, EXEC_MOTION_CANCEL);
       }
     }
 
-    setpointX = sys.position[0];
-    setpointY = sys.position[1];
 
 
     motors_setPWM(
-                computePID(setpointX - axis[0].position, &(axis[0].PID)),
-                computePID(setpointY - axis[1].position, &(axis[1].PID))
-                ,0);
+                computePID(sys.position[0] - axis[0].position, &(axis[0].PID)),
+                computePID(sys.position[1] - axis[1].position, &(axis[1].PID)),
+                computePID(sys.position[2] - axis[2].position, &(axis[2].PID))
+                );
 
 
-    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
 
 
 }
