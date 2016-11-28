@@ -192,7 +192,7 @@ void pathplanner_execute() {
     // Called from control loop interrupt routine
 
     float fact;
-    int32_t pos[3];
+    int32_t pos[N_AXIS];
     int i;
     int axes_home;
     float v;
@@ -263,9 +263,9 @@ void pathplanner_execute() {
 
         if (fact>1.0f) fact = 1.0f; // should not happen if pathplanner is fed appropriately
 
-        pos[0] = pp.base[0] + fact * pp.steps[0];
-        pos[1] = pp.base[1] + fact * pp.steps[1];
-        pos[2] = pp.base[2] + fact * pp.steps[2];
+        for(i=0;i<N_AXIS;i++) {
+            pos[i] = pp.base[i] + fact * pp.steps[i];
+        }
 
         // Accelerate max
         pp.v += pp.acceleration * dt * override;

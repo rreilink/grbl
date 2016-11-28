@@ -50,6 +50,7 @@ extern uint8_t dummy_reg;
 #define X_DIRECTION_BIT   5  // Uno Digital Pin 5
 #define Y_DIRECTION_BIT   6  // Uno Digital Pin 6
 #define Z_DIRECTION_BIT   7  // Uno Digital Pin 7
+#define E_DIRECTION_BIT   1
 #define DIRECTION_MASK    ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
 
 // Define stepper driver enable/disable output pin.
