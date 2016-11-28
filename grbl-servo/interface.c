@@ -2,7 +2,7 @@
 #include "pathplanner.h"
 volatile io_sim_t io;
 
-void _delay_ms(int i) { }
+void _delay_ms(int i) { HAL_Delay(i); }
 
 void stepper_init() { }
 
@@ -133,20 +133,7 @@ void limits_go_home(uint8_t cycle_mask) {
 
 void limits_init() {}
 void limits_soft_check(float *target) { }
-/*
-uint16_t probe_invert_mask = 0;
 
-void probe_configure_invert_mask(uint8_t is_probe_away) {
-    probe_invert_mask = 0; // Initialize as zero.
-    if (bit_isfalse(settings.flags,BITFLAG_INVERT_PROBE_PIN)) { probe_invert_mask ^= (1<<3); }
-    if (is_probe_away) { probe_invert_mask ^= (1<<3); }
-}
-
-
-uint8_t probe_get_state() {
-    return (GPIOC->IDR & preobe_invert_mask) & (1<<3);
-}
-*/
 uint8_t eeprom_data[1024];
 
 void eeprom_put_char( unsigned int addr, unsigned char new_value ) {

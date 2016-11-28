@@ -63,6 +63,7 @@
 #define NON_MODAL_ABSOLUTE_OVERRIDE 7 // G53
 #define NON_MODAL_SET_COORDINATE_OFFSET 8 // G92
 #define NON_MODAL_RESET_COORDINATE_OFFSET 9 //G92.1
+#define NON_MODAL_SET_EXTRUDER_TEMPERATURE 104 // M104
 
 // Modal Group G1: Motion modes
 #define MOTION_MODE_SEEK 0 // G0 (Default: Must be zero)
@@ -124,6 +125,8 @@
 // N/A: Stores coordinate system value (54-59) to change to.
 
 
+#define TEMPERATURE_SET_EXTRUDER 1
+
 // Define parameter word mapping.
 #define WORD_F  0
 #define WORD_I  1
@@ -156,6 +159,8 @@ typedef struct {
   uint8_t program_flow;    // {M0,M1,M2,M30}
   uint8_t coolant;         // {M7,M8,M9}
   uint8_t spindle;         // {M3,M4,M5}
+  uint16_t extruder_temperature;     // {M104}
+  uint16_t bed_temperature;  // {M140}
 } gc_modal_t;  
 
 typedef struct {

@@ -312,6 +312,11 @@ uint8_t gc_execute_line(char *line)
               case 9: gc_block.modal.coolant = COOLANT_DISABLE; break;
             }
             break;
+          case 104: // Set extruder temperature
+          case 109: // Set extruder temperature and wait
+          case 140: // Set bed temperature
+            gc_block.non_modal_command = int_value;
+            break;
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported M command]
         }
       
@@ -535,6 +540,20 @@ uint8_t gc_execute_line(char *line)
   // the axis value, G92 similarly to G10 L20, and G28/30 as an intermediate target position that observes
   // all the current coordinate system and G92 offsets. 
   switch (gc_block.non_modal_command) {
+    case 104: // Set extruder temperature
+    case 140: // Set bed temperature
+      if (bit_isfalse(value_words, (1<<WORD_S))) {FAIL(STATUS_GCODE_VALUE_WORD_MISSING); }
+      if ((gc_block.values.s < 0) || (gc_block.values.s>65535)) { FAIL(STATUS_GCODE_INVALID_TARGET); }
+      if (gc_block.non_modal_command == 104) {
+          gc_block.modal.extruder_temperature = gc_block.values.s;
+      } else {
+          gc_block.modal.bed_temperature = gc_block.values.s;
+      }
+      
+      // These commands abuse the S-word for temperature, set it to the current spindle speed to
+      // avoid messing that up
+      gc_block.values.s = gc_state.spindle_speed;
+      break;  
     case NON_MODAL_SET_COORDINATE_DATA:  
       // [G10 Errors]: L missing and is not 2 or 20. P word missing. (Negative P value done.)
       // [G10 L2 Errors]: R word NOT SUPPORTED. P value not 0 to nCoordSys(max 9). Axis words missing.
