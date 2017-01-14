@@ -13,6 +13,12 @@
 
 volatile unsigned long ticks = 0;
 
+void Safe_State(void) {
+    GPIOC->BSRRL = GPIO_PIN_8 << 16; // reset pin motors enable
+    motors_setPWM(0, 0, 0);
+    tempcontrol_off();
+}
+
 void Error_Handler                (void) { for(;;); }
 void UsageFault_Handler(void) {
     int a;
@@ -176,6 +182,7 @@ int main(void)
 #endif
 
     serial_init();
+    tempcontrol_init();
     servo_init();
 
 

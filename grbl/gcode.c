@@ -20,6 +20,7 @@
 */
 
 #include "grbl.h"
+void tempcontrol_setextrudersetpoint(float t); // TODO: move
 
 // NOTE: Max line number is defined by the g-code standard to be 99999. It seems to be an
 // arbitrary value, and some GUIs may require more. So we increased it based on a max safe
@@ -890,6 +891,12 @@ uint8_t gc_execute_line(char *line)
   if (gc_state.modal.coolant != gc_block.modal.coolant) {
     coolant_run(gc_block.modal.coolant);
     gc_state.modal.coolant = gc_block.modal.coolant;
+  }
+  
+  // [8b. Temperature control ]:
+  if (gc_state.modal.extruder_temperature != gc_block.modal.extruder_temperature) {
+      tempcontrol_setextrudersetpoint(gc_block.modal.extruder_temperature);
+      gc_state.modal.extruder_temperature = gc_block.modal.extruder_temperature;
   }
   
   // [9. Enable/disable feed rate or spindle overrides ]: NOT SUPPORTED

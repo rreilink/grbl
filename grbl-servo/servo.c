@@ -3,28 +3,10 @@
 #include <grbl.h>
 
 #include "pathplanner.h"
+#include "servo.h"
 
 TIM_HandleTypeDef motorPWM = {0};
 
-typedef struct  {
-    float Kp;
-    float Ti;
-    float Td;
-    float i;
-    float d;
-    float limit;
-    float previous;
-
-
-} PIDControllerState;
-
-
-
-typedef struct {
-    PIDControllerState PID;
-    TIM_HandleTypeDef encoder;
-    int position;
-} ServoAxis;
 
 
 ServoAxis axis[3] = {0};
@@ -249,6 +231,7 @@ void motors_setPWM(int p1, int p2, int p3) {
 /*
  * Servo / general
  */
+static const float ts = 1.0f/20000.0f;
 
 void servo_init() {
 
@@ -256,38 +239,52 @@ void servo_init() {
     axis[0].PID.Ti = 0.05;
     axis[0].PID.Td = 0.01;
     axis[0].PID.limit = 4199;
+    axis[0].PID.ts = ts;
 
     axis[1].PID.Kp = 25;
     axis[1].PID.Ti = 0.05;
     axis[1].PID.Td = 0.01;
     axis[1].PID.limit = 4199;
+    axis[1].PID.ts = ts;
 
     axis[2].PID.Kp = 50;
     axis[2].PID.Ti = 0.1;
     axis[2].PID.Td = 0.005;
     axis[2].PID.limit = 2099;
+    axis[2].PID.ts = ts;
+    
     
     motors_init();
     encoders_init();
 }
 
-static const float ts = 1.0f/20000.0f;
 
-static float computePID(float input, PIDControllerState *state) {
-    float ilimit = state->limit / state->Kp * state->Ti;
+
+float constrain(float x, float min, float max) {
+    if (x<min) return min;
+    if (x>max) return max;
+    return x;
+}
+
+
+float computePID(float input, PIDControllerState *state) {
+  
+    float pd;
 
     if (isnan(state->previous)) state->previous = input;
 
-    state->i += input * ts;
-
-    state->d = state->d*0.99f + 0.01f*((input-state->previous)/ts);
-
-    if (state->i > ilimit) state->i = ilimit;
-    if (state->i < -ilimit) state->i = -ilimit;
-
+    // compute P + D terms
+    state->d = state->d*0.99f + 0.01f*((input-state->previous)/state->ts);
+    pd = state->Kp * (input + state->d * state->Td);
+    pd = constrain(pd, -state->limit, state->limit);
+      
+    // Compute I term, saturate such that PD + I within -limit and +limit
+    state->i += input * state->ts * state->Kp / state->Ti;
+    state->i = constrain(state->i, -state->limit - pd, state->limit - pd);
 
     state->previous = input;
-    return state->Kp * (input + state->i / state->Ti + state->d * state->Td);
+
+    return pd + state->i;
 }
 
 void resetPID(PIDControllerState *state) {
@@ -319,10 +316,15 @@ int readPosZ() {
     return axis[2].position;
 }
 
+const int max_tracking_error = 50;
+int tracking_error_count = 0;
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
+    int error_x, error_y, error_z;
+    static int subsample = 0;
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
-
+    
     pathplanner_execute();
 
     encoder_read(&axis[0]);
@@ -344,15 +346,38 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       }
     }
 
+    error_x = sys.position[0] - axis[0].position;
+    error_y = sys.position[1] - axis[1].position;
+    error_z = sys.position[2] - axis[2].position;
+    
+    if (tracking_error_count >= 50) {
+        motors_setPWM(0, 0, 0);
+    } else {
+    
+        if ((abs(error_x) > max_tracking_error) || 
+                (abs(error_y) > max_tracking_error)  ||
+                (abs(error_z) > max_tracking_error) ) {
+            tracking_error_count++;
+            
+        } else {
+            tracking_error_count = 0;
+        }
+    
+        motors_setPWM(
+                    computePID(error_x, &(axis[0].PID)),
+                    computePID(error_y, &(axis[1].PID)),
+                    computePID(error_z, &(axis[2].PID))
+                    );
+    }
 
-
-    motors_setPWM(
-                computePID(sys.position[0] - axis[0].position, &(axis[0].PID)),
-                computePID(sys.position[1] - axis[1].position, &(axis[1].PID)),
-                computePID(sys.position[2] - axis[2].position, &(axis[2].PID))
-                );
-
-
+    subsample++;
+    if (subsample == 1000) {
+        tempcontrol_update();
+        subsample = 0;
+        
+    }
+    
+    
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
 
 

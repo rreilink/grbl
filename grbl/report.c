@@ -29,6 +29,8 @@
 #include "grbl.h"
 
 
+float tempcontrol_getextrudertemp(); // TODO: move this
+
 // Handles the primary confirmation protocol response for streaming interfaces and human-feedback.
 // For every incoming line, this method responds with an 'ok' for a successful command or an 
 // 'error:'  to indicate some error event with the line or some critical system error during 
@@ -500,6 +502,11 @@ void report_realtime_status()
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) {
     printPgmString(PSTR(",Lim:"));
     print_unsigned_int8(limits_get_state(),2,N_AXIS);
+  }
+  
+  if (bit_istrue(settings.status_report_mask, BITFLAG_RT_STATUS_TEMPERATURES)) {
+      printPgmString(PSTR(",T0:"));
+      printFloat(tempcontrol_getextrudertemp(), 1);
   }
   
   #ifdef REPORT_CONTROL_PIN_STATE 

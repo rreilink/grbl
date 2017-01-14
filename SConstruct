@@ -7,7 +7,7 @@ armenv = Environment(
         "-fno-exceptions -fno-builtin -ffunction-sections -fdata-sections -funsigned-char -MMD "
         "-fno-delete-null-pointer-checks -fomit-frame-pointer "
         "-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=softfp "
-        "-Os -std=gnu99 -DSTM32F401xE -D__FPU_PRESENT=1 -DARM_MATH_CM4 -MMD -MP "
+        "-O0 -std=gnu99 -DSTM32F401xE -D__FPU_PRESENT=1 -DARM_MATH_CM4 -MMD -MP "
         "-DHSE_VALUE=8000000"
     ,
     CPPPATH = [
@@ -37,6 +37,7 @@ armsources = [
     "grbl-servo/serial.c",
     "grbl-servo/interface.c",
     "grbl-servo/servo.c",
+    "grbl-servo/tempcontrol.c",
     "grbl/probe.c",
     ] + Glob('STM32F4xx_HAL_Driver/Src/*.c')
 
